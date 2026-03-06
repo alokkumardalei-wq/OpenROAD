@@ -129,6 +129,100 @@ void FlexTAWorker::initTracks()
   }
 }
 
+bool FlexTAWorker::initIroute_helper_pin_iterm(
+    frInstTerm* iterm,
+    frNet* net,
+    frLayerNum layer_num,
+    bool is_horizontal,
+    bool has_down,
+    bool has_up,
+    frCoord& max_begin,
+    frCoord& min_end,
+    std::set<frCoord>& down_via_coord_set,
+    std::set<frCoord>& up_via_coord_set,
+    int& next_iroute_dir,
+    frCoord& pin_coord)
+{
+  if (iterm->getNet() != net) {
+    return false;
+  }
+  frInst* inst = iterm->getInst();
+  odb::dbTransform shiftXform = inst->getNoRotationTransform();
+  frMTerm* mterm = iterm->getTerm();
+  int pinIdx = 0;
+  for (auto& pin : mterm->getPins()) {
+    if (!pin->hasPinAccess()) {
+      pinIdx++;
+      continue;
+    }
+    frAccessPoint* ap = (iterm->getAccessPoints())[pinIdx];
+    if (ap == nullptr) {
+      pinIdx++;
+      continue;
+    }
+    odb::Point bp = ap->getPoint();
+    auto bNum = ap->getLayerNum();
+    shiftXform.apply(bp);
+    if (layer_num == bNum && getRouteBox().intersects(bp)) {
+      pin_coord = is_horizontal ? bp.y() : bp.x();
+      max_begin = is_horizontal ? bp.x() : bp.y();
+      min_end = is_horizontal ? bp.x() : bp.y();
+      next_iroute_dir = 0;
+      if (has_down) {
+        down_via_coord_set.insert(max_begin);
+      }
+      if (has_up) {
+        up_via_coord_set.insert(max_begin);
+      }
+      return true;
+    }
+    pinIdx++;
+  }
+  return false;
+}
+
+bool FlexTAWorker::initIroute_helper_pin_bterm(
+    frBTerm* bterm,
+    frNet* net,
+    frLayerNum layer_num,
+    bool is_horizontal,
+    bool has_down,
+    bool has_up,
+    frCoord& max_begin,
+    frCoord& min_end,
+    std::set<frCoord>& down_via_coord_set,
+    std::set<frCoord>& up_via_coord_set,
+    int& next_iroute_dir,
+    frCoord& pin_coord)
+{
+  if (bterm->getNet() != net) {
+    return false;
+  }
+  for (auto& pin : bterm->getPins()) {
+    if (!pin->hasPinAccess()) {
+      continue;
+    }
+    for (auto& ap : pin->getPinAccess(0)->getAccessPoints()) {
+      odb::Point bp = ap->getPoint();
+      auto bNum = ap->getLayerNum();
+      if (layer_num == bNum && getRouteBox().intersects(bp)) {
+        pin_coord = is_horizontal ? bp.y() : bp.x();
+        max_begin = is_horizontal ? bp.x() : bp.y();
+        min_end = is_horizontal ? bp.x() : bp.y();
+        next_iroute_dir = 0;
+        if (has_down) {
+          down_via_coord_set.insert(max_begin);
+        }
+        if (has_up) {
+          up_via_coord_set.insert(max_begin);
+        }
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 // use prefAp, otherwise return false
 bool FlexTAWorker::initIroute_helper_pin(frGuide* guide,
                                          frCoord& max_begin,
@@ -182,70 +276,37 @@ bool FlexTAWorker::initIroute_helper_pin(frGuide* guide,
     switch (term->typeId()) {
       case frcInstTerm: {
         auto iterm = static_cast<frInstTerm*>(term);
-        if (iterm->getNet() != net) {
-          continue;
-        }
-        frInst* inst = iterm->getInst();
-        odb::dbTransform shiftXform = inst->getNoRotationTransform();
-        frMTerm* mterm = iterm->getTerm();
-        int pinIdx = 0;
-        for (auto& pin : mterm->getPins()) {
-          if (!pin->hasPinAccess()) {
-            pinIdx++;
-            continue;
-          }
-          frAccessPoint* ap
-              = (static_cast<frInstTerm*>(term)->getAccessPoints())[pinIdx];
-          if (ap == nullptr) {
-            pinIdx++;
-            continue;
-          }
-          odb::Point bp = ap->getPoint();
-          auto bNum = ap->getLayerNum();
-          shiftXform.apply(bp);
-          if (layer_num == bNum && getRouteBox().intersects(bp)) {
-            pin_coord = is_horizontal ? bp.y() : bp.x();
-            max_begin = is_horizontal ? bp.x() : bp.y();
-            min_end = is_horizontal ? bp.x() : bp.y();
-            next_iroute_dir = 0;
-            if (has_down) {
-              down_via_coord_set.insert(max_begin);
-            }
-            if (has_up) {
-              up_via_coord_set.insert(max_begin);
-            }
-            return true;
-          }
-          pinIdx++;
+        if (initIroute_helper_pin_iterm(iterm,
+                                        net,
+                                        layer_num,
+                                        is_horizontal,
+                                        has_down,
+                                        has_up,
+                                        max_begin,
+                                        min_end,
+                                        down_via_coord_set,
+                                        up_via_coord_set,
+                                        next_iroute_dir,
+                                        pin_coord)) {
+          return true;
         }
         break;
       }
       case frcBTerm: {
         auto bterm = static_cast<frBTerm*>(term);
-        if (bterm->getNet() != net) {
-          continue;
-        }
-        for (auto& pin : bterm->getPins()) {
-          if (!pin->hasPinAccess()) {
-            continue;
-          }
-          for (auto& ap : pin->getPinAccess(0)->getAccessPoints()) {
-            odb::Point bp = ap->getPoint();
-            auto bNum = ap->getLayerNum();
-            if (layer_num == bNum && getRouteBox().intersects(bp)) {
-              pin_coord = is_horizontal ? bp.y() : bp.x();
-              max_begin = is_horizontal ? bp.x() : bp.y();
-              min_end = is_horizontal ? bp.x() : bp.y();
-              next_iroute_dir = 0;
-              if (has_down) {
-                down_via_coord_set.insert(max_begin);
-              }
-              if (has_up) {
-                up_via_coord_set.insert(max_begin);
-              }
-              return true;
-            }
-          }
+        if (initIroute_helper_pin_bterm(bterm,
+                                        net,
+                                        layer_num,
+                                        is_horizontal,
+                                        has_down,
+                                        has_up,
+                                        max_begin,
+                                        min_end,
+                                        down_via_coord_set,
+                                        up_via_coord_set,
+                                        next_iroute_dir,
+                                        pin_coord)) {
+          return true;
         }
         break;
       }
@@ -724,6 +785,85 @@ void FlexTAWorker::initFixedObjs_helper(const odb::Rect& box,
   }
 }
 
+void FlexTAWorker::initFixedObjs_processTerm(
+    frBlockObject* obj,
+    frLayerNum layer_num,
+    const odb::Rect& bounds,
+    odb::Rect& box,
+    frCoord width)
+{
+  frCoord bloat_dist = router_cfg_->TASHAPEBLOATWIDTH * width;
+  frNet* net_ptr = nullptr;
+  if (obj->typeId() == frcBTerm) {
+    net_ptr = static_cast<frBTerm*>(obj)->getNet();
+  } else {
+    net_ptr = static_cast<frInstTerm*>(obj)->getNet();
+  }
+  initFixedObjs_helper(box, bloat_dist, layer_num, net_ptr);
+}
+
+void FlexTAWorker::initFixedObjs_processVia(
+    frBlockObject* obj,
+    frLayerNum layer_num,
+    const odb::Rect& bounds,
+    odb::Rect& box,
+    frCoord width,
+    frNet* net_ptr)
+{
+  frCoord bloat_dist = 0;
+  // down-via
+  if (layer_num - 2 >= getDesign()->getTech()->getBottomLayerNum()
+      && getTech()->getLayer(layer_num - 2)->getType()
+             == dbTechLayerType::ROUTING) {
+    auto cut_layer = getTech()->getLayer(layer_num - 1);
+    auto via = std::make_unique<frVia>(cut_layer->getDefaultViaDef());
+    odb::Rect via_box = via->getLayer2BBox();
+    frCoord via_width = via_box.minDXDY();
+    // only add for fat via
+    if (via_width > width) {
+      bloat_dist = initFixedObjs_calcOBSBloatDistVia(
+          cut_layer->getDefaultViaDef(), layer_num, bounds, false);
+      initFixedObjs_helper(box, bloat_dist, layer_num, net_ptr, true);
+    }
+  }
+  // up-via
+  if (layer_num + 2 < (int) design_->getTech()->getLayers().size()
+      && getTech()->getLayer(layer_num + 2)->getType()
+             == dbTechLayerType::ROUTING) {
+    auto cut_layer = getTech()->getLayer(layer_num + 1);
+    auto via = std::make_unique<frVia>(cut_layer->getDefaultViaDef());
+    odb::Rect via_box = via->getLayer1BBox();
+    frCoord via_width = via_box.minDXDY();
+    // only add for fat via
+    if (via_width > width) {
+      bloat_dist = initFixedObjs_calcOBSBloatDistVia(
+          cut_layer->getDefaultViaDef(), layer_num, bounds, false);
+      initFixedObjs_helper(box, bloat_dist, layer_num, net_ptr, true);
+    }
+  }
+}
+
+void FlexTAWorker::initFixedObjs_processRouting(
+    frBlockObject* obj,
+    frLayerNum layer_num,
+    const odb::Rect& bounds,
+    odb::Rect& box,
+    frCoord width)
+{
+  frCoord bloat_dist = initFixedObjs_calcBloatDist(obj, layer_num, bounds);
+  frNet* net_ptr = nullptr;
+  if (obj->typeId() == frcPathSeg) {
+    net_ptr = static_cast<frPathSeg*>(obj)->getNet();
+  } else {
+    net_ptr = static_cast<frVia*>(obj)->getNet();
+  }
+  initFixedObjs_helper(box, bloat_dist, layer_num, net_ptr);
+  if (getTech()->getLayer(layer_num)->getType()
+      == dbTechLayerType::ROUTING) {
+    initFixedObjs_processVia(obj, layer_num, bounds, box, width, net_ptr);
+  }
+}
+
 void FlexTAWorker::initFixedObjs()
 {
   frRegionQuery::Objects<frBlockObject> result;
@@ -746,57 +886,10 @@ void FlexTAWorker::initFixedObjs()
       auto type = obj->typeId();
       // instterm term
       if (type == frcInstTerm || type == frcBTerm) {
-        bloat_dist = router_cfg_->TASHAPEBLOATWIDTH * width;
-        frNet* net_ptr = nullptr;
-        if (type == frcBTerm) {
-          net_ptr = static_cast<frBTerm*>(obj)->getNet();
-        } else {
-          net_ptr = static_cast<frInstTerm*>(obj)->getNet();
-        }
-        initFixedObjs_helper(box, bloat_dist, layerNum, net_ptr);
+        initFixedObjs_processTerm(obj, layerNum, bounds, box, width);
         // snet
       } else if (type == frcPathSeg || type == frcVia) {
-        bloat_dist = initFixedObjs_calcBloatDist(obj, layerNum, bounds);
-        frNet* net_ptr = nullptr;
-        if (type == frcPathSeg) {
-          net_ptr = static_cast<frPathSeg*>(obj)->getNet();
-        } else {
-          net_ptr = static_cast<frVia*>(obj)->getNet();
-        }
-        initFixedObjs_helper(box, bloat_dist, layerNum, net_ptr);
-        if (getTech()->getLayer(layerNum)->getType()
-            == dbTechLayerType::ROUTING) {
-          // down-via
-          if (layerNum - 2 >= getDesign()->getTech()->getBottomLayerNum()
-              && getTech()->getLayer(layerNum - 2)->getType()
-                     == dbTechLayerType::ROUTING) {
-            auto cut_layer = getTech()->getLayer(layerNum - 1);
-            auto via = std::make_unique<frVia>(cut_layer->getDefaultViaDef());
-            odb::Rect via_box = via->getLayer2BBox();
-            frCoord via_width = via_box.minDXDY();
-            // only add for fat via
-            if (via_width > width) {
-              bloat_dist = initFixedObjs_calcOBSBloatDistVia(
-                  cut_layer->getDefaultViaDef(), layerNum, bounds, false);
-              initFixedObjs_helper(box, bloat_dist, layerNum, net_ptr, true);
-            }
-          }
-          // up-via
-          if (layerNum + 2 < (int) design_->getTech()->getLayers().size()
-              && getTech()->getLayer(layerNum + 2)->getType()
-                     == dbTechLayerType::ROUTING) {
-            auto cut_layer = getTech()->getLayer(layerNum + 1);
-            auto via = std::make_unique<frVia>(cut_layer->getDefaultViaDef());
-            odb::Rect via_box = via->getLayer1BBox();
-            frCoord via_width = via_box.minDXDY();
-            // only add for fat via
-            if (via_width > width) {
-              bloat_dist = initFixedObjs_calcOBSBloatDistVia(
-                  cut_layer->getDefaultViaDef(), layerNum, bounds, false);
-              initFixedObjs_helper(box, bloat_dist, layerNum, net_ptr, true);
-            }
-          }
-        }
+        initFixedObjs_processRouting(obj, layerNum, bounds, box, width);
       } else if (type == frcBlockage || type == frcInstBlockage) {
         bloat_dist = initFixedObjs_calcBloatDist(obj, layerNum, bounds);
         initFixedObjs_helper(box, bloat_dist, layerNum, nullptr);

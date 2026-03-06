@@ -247,6 +247,46 @@ class FlexTAWorker
                              std::set<frCoord>& upViaCoordSet,
                              int& nextIrouteDir,
                              frCoord& pinCoord);
+  bool initIroute_helper_pin_iterm(frInstTerm* iterm,
+                                   frNet* net,
+                                   frLayerNum layer_num,
+                                   bool is_horizontal,
+                                   bool has_down,
+                                   bool has_up,
+                                   frCoord& max_begin,
+                                   frCoord& min_end,
+                                   std::set<frCoord>& down_via_coord_set,
+                                   std::set<frCoord>& up_via_coord_set,
+                                   int& next_iroute_dir,
+                                   frCoord& pin_coord);
+  bool initIroute_helper_pin_bterm(frBTerm* bterm,
+                                   frNet* net,
+                                   frLayerNum layer_num,
+                                   bool is_horizontal,
+                                   bool has_down,
+                                   bool has_up,
+                                   frCoord& max_begin,
+                                   frCoord& min_end,
+                                   std::set<frCoord>& down_via_coord_set,
+                                   std::set<frCoord>& up_via_coord_set,
+                                   int& next_iroute_dir,
+                                   frCoord& pin_coord);
+  void initFixedObjs_processTerm(frBlockObject* obj,
+                                 frLayerNum layer_num,
+                                 const odb::Rect& bounds,
+                                 odb::Rect& box,
+                                 frCoord width);
+  void initFixedObjs_processRouting(frBlockObject* obj,
+                                    frLayerNum layer_num,
+                                    const odb::Rect& bounds,
+                                    odb::Rect& box,
+                                    frCoord width);
+  void initFixedObjs_processVia(frBlockObject* obj,
+                                frLayerNum layer_num,
+                                const odb::Rect& bounds,
+                                odb::Rect& box,
+                                frCoord width,
+                                frNet* net_ptr);
   void initCosts();
   void sortIroutes();
   bool outOfDieVia(frLayerNum layer_num,
