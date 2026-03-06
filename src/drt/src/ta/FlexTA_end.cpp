@@ -16,21 +16,21 @@ namespace drt {
 void FlexTAWorker::saveToGuides()
 {
   for (auto& iroute : iroutes_) {
-    for (auto& uPinFig : iroute->getFigs()) {
-      if (uPinFig->typeId() == tacPathSeg) {
-        std::unique_ptr<frPathSeg> pathSeg = std::make_unique<frPathSeg>(
-            *static_cast<taPathSeg*>(uPinFig.get()));
+    for (auto& pin_fig : iroute->getFigs()) {
+      if (pin_fig->typeId() == tacPathSeg) {
+        std::unique_ptr<frPathSeg> path_seg = std::make_unique<frPathSeg>(
+            *static_cast<taPathSeg*>(pin_fig.get()));
         if (save_updates_) {
           drUpdate update(drUpdate::ADD_GUIDE);
-          update.setPathSeg(*pathSeg);
+          update.setPathSeg(*path_seg);
           update.setIndexInOwner(iroute->getGuide()->getIndexInOwner());
           update.setNet(iroute->getGuide()->getNet());
           design_->addUpdate(update);
         }
-        pathSeg->addToNet(iroute->getGuide()->getNet());
+        path_seg->addToNet(iroute->getGuide()->getNet());
         auto guide = iroute->getGuide();
         std::vector<std::unique_ptr<frConnFig>> tmp;
-        tmp.push_back(std::move(pathSeg));
+        tmp.push_back(std::move(path_seg));
         guide->setRoutes(tmp);
       }
       // modify upper/lower segs

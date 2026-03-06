@@ -53,7 +53,7 @@ class FlexTA
   void main_helper(frLayerNum lNum, int maxOffsetIter, int panelWidth);
   void initTA(int size);
   void searchRepair(int iter, int size, int offset);
-  int initTA_helper(int iter, int size, int offset, bool isH, int& numPanels);
+  int initTA_helper(int iter, int size, int offset, bool is_horizontal, int& num_panels);
 };
 
 class FlexTAWorker;
@@ -68,33 +68,33 @@ class FlexTAWorkerRegionQuery
   void add(taPinFig* fig);
   void remove(taPinFig* fig);
   void query(const odb::Rect& box,
-             frLayerNum layerNum,
+             frLayerNum layer_num,
              frOrderedIdSet<taPin*>& result) const;
 
   void addCost(const odb::Rect& box,
-               frLayerNum layerNum,
+               frLayerNum layer_num,
                frBlockObject* obj,
                frConstraint* con);
   void removeCost(const odb::Rect& box,
-                  frLayerNum layerNum,
+                  frLayerNum layer_num,
                   frBlockObject* obj,
                   frConstraint* con);
   void queryCost(
       const odb::Rect& box,
-      frLayerNum layerNum,
+      frLayerNum layer_num,
       std::vector<rq_box_value_t<std::pair<frBlockObject*, frConstraint*>>>&
           result) const;
   void addViaCost(const odb::Rect& box,
-                  frLayerNum layerNum,
+                  frLayerNum layer_num,
                   frBlockObject* obj,
                   frConstraint* con);
   void removeViaCost(const odb::Rect& box,
-                     frLayerNum layerNum,
+                     frLayerNum layer_num,
                      frBlockObject* obj,
                      frConstraint* con);
   void queryViaCost(
       const odb::Rect& box,
-      frLayerNum layerNum,
+      frLayerNum layer_num,
       std::vector<rq_box_value_t<std::pair<frBlockObject*, frConstraint*>>>&
           result) const;
 
@@ -164,16 +164,16 @@ class FlexTAWorker
   frRegionQuery* getRegionQuery() const { return design_->getRegionQuery(); }
   void getTrackIdx(frCoord loc1,
                    frCoord loc2,
-                   frLayerNum lNum,
+                   frLayerNum layer_num,
                    int& idx1,
                    int& idx2) const
   {
     idx1 = int(
-        std::lower_bound(trackLocs_[lNum].begin(), trackLocs_[lNum].end(), loc1)
-        - trackLocs_[lNum].begin());
+        std::lower_bound(trackLocs_[layer_num].begin(), trackLocs_[layer_num].end(), loc1)
+        - trackLocs_[layer_num].begin());
     idx2 = int(std::upper_bound(
-                   trackLocs_[lNum].begin(), trackLocs_[lNum].end(), loc2)
-               - trackLocs_[lNum].begin())
+                   trackLocs_[layer_num].begin(), trackLocs_[layer_num].end(), loc2)
+               - trackLocs_[layer_num].begin())
            - 1;
   }
   const std::vector<frCoord>& getTrackLocs(frLayerNum in) const
@@ -211,15 +211,15 @@ class FlexTAWorker
   void init();
   void initFixedObjs();
   frCoord initFixedObjs_calcBloatDist(frBlockObject* obj,
-                                      frLayerNum lNum,
+                                      frLayerNum layer_num,
                                       const odb::Rect& box);
   frCoord initFixedObjs_calcOBSBloatDistVia(const frViaDef* viaDef,
-                                            frLayerNum lNum,
+                                            frLayerNum layer_num,
                                             const odb::Rect& box,
                                             bool isOBS = true);
   void initFixedObjs_helper(const odb::Rect& box,
                             frCoord bloatDist,
-                            frLayerNum lNum,
+                            frLayerNum layer_num,
                             frNet* net,
                             bool isViaCost = false);
   void initTracks();
@@ -264,19 +264,19 @@ class FlexTAWorker
                bool isAddCost,
                frOrderedIdSet<taPin*>* pinS = nullptr);
   void modMinSpacingCostPlanar(const odb::Rect& box,
-                               frLayerNum lNum,
+                               frLayerNum layer_num,
                                taPinFig* fig,
                                bool isAddCost,
                                frOrderedIdSet<taPin*>* pinS = nullptr);
   void modMinSpacingCostVia(const odb::Rect& box,
-                            frLayerNum lNum,
+                            frLayerNum layer_num,
                             taPinFig* fig,
                             bool isAddCost,
                             bool isUpperVia,
                             bool isCurrPs,
                             frOrderedIdSet<taPin*>* pinS = nullptr);
   void modCutSpacingCost(const odb::Rect& box,
-                         frLayerNum lNum,
+                         frLayerNum layer_num,
                          taPinFig* fig,
                          bool isAddCost,
                          frOrderedIdSet<taPin*>* pinS = nullptr);
@@ -286,15 +286,15 @@ class FlexTAWorker
   void assignIroute(taPin* iroute);
   void assignIroute_init(taPin* iroute, frOrderedIdSet<taPin*>* pinS);
   void assignIroute_availTracks(taPin* iroute,
-                                frLayerNum& lNum,
+                                frLayerNum& layer_num,
                                 int& idx1,
                                 int& idx2);
   int assignIroute_bestTrack(taPin* iroute,
-                             frLayerNum lNum,
+                             frLayerNum layer_num,
                              int idx1,
                              int idx2);
   void assignIroute_bestTrack_helper(taPin* iroute,
-                                     frLayerNum lNum,
+                                     frLayerNum layer_num,
                                      int trackIdx,
                                      frUInt4& bestCost,
                                      frCoord& bestTrackLoc,
@@ -309,7 +309,7 @@ class FlexTAWorker
   frUInt4 assignIroute_getDRCCost(taPin* iroute, frCoord trackLoc);
   frUInt4 assignIroute_getDRCCost_helper(taPin* iroute,
                                          odb::Rect& box,
-                                         frLayerNum lNum);
+                                         frLayerNum layer_num);
   void assignIroute_updateIroute(taPin* iroute,
                                  frCoord bestTrackLoc,
                                  frOrderedIdSet<taPin*>* pinS);
