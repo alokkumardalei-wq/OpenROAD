@@ -21,6 +21,7 @@ or_integration_tests(
     power1
     read_liberty1
     read_vcd
+    read_saif_null_instance
     read_verilog1
     read_verilog2
     read_verilog3
